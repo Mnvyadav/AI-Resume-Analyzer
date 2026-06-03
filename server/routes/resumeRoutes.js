@@ -22,8 +22,7 @@ router.post(
 
       const pdfData = await pdfParse(dataBuffer);
 
-      console.log(pdfData.text);
-
+      
       res.json({
         extractedText: pdfData.text,
       });
