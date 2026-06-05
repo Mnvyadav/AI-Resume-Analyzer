@@ -27,6 +27,12 @@ function Dashboard() {
   const [suggestions, setSuggestions] =
     useState([]);
 
+  const [previousScore, setPreviousScore] =
+  useState(72);
+
+  const [history, setHistory] =
+  useState([]);
+
   const [darkMode, setDarkMode] =
   useState(false);
 
@@ -37,6 +43,7 @@ function Dashboard() {
 
   useEffect(() => {
     fetchResumes();
+    fetchHistory();
   }, []);
 
   const fetchResumes = async () => {
@@ -57,6 +64,22 @@ function Dashboard() {
     }
   };
 
+  const fetchHistory = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data } = await supabase
+      .from("analysis_history")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", {
+        ascending: false,
+      });
+
+    setHistory(data || []);
+  };
+
   const analyzeResume = async (
     extractedText
   ) => {
@@ -71,6 +94,20 @@ function Dashboard() {
       setAtsScore(
         response.data.atsScore
       );
+
+      const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        await supabase
+          .from("analysis_history")
+          .insert([
+            {
+              user_id: user.id,
+              resume_name: file?.name || "Resume",
+              ats_score: response.data.atsScore,
+            },
+          ]);
 
       setStrengths(
         response.data.strengths
@@ -127,6 +164,9 @@ function Dashboard() {
     }
   };
 
+  const improvement =
+  (atsScore || 0) - previousScore;
+
   const handleUpload = async () => {
     if (!file) {
       alert("Please select a file");
@@ -176,6 +216,7 @@ function Dashboard() {
       await extractResumeText(file);
 
       fetchResumes();
+    
     }
   };
 
@@ -339,6 +380,58 @@ function Dashboard() {
           </h2>
 
           <SkillsChart />
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-md mb-8">
+          <h2 className="text-2xl font-bold mb-4">
+            Resume Comparison
+          </h2>
+
+          <p>
+            Previous ATS Score: {previousScore}%
+          </p>
+
+          <p>
+            Current ATS Score: {atsScore || 0}%
+          </p>
+
+          <p
+            className={`font-bold mt-2 ${
+              improvement >= 0
+                ? "text-green-600"
+                : "text-red-600"
+            }`}
+          >
+            Improvement:
+            {" "}
+            {improvement >= 0
+              ? `+${improvement}`
+              : improvement}
+            %
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-md mb-8">
+          <h2 className="text-2xl font-bold mb-4">
+            Analysis History
+          </h2>
+
+          {history.map((item) => (
+            <div
+              key={item.id}
+              className="border-b py-2"
+            >
+              <p>
+                {item.resume_name}
+              </p>
+
+              <p>
+                ATS Score:
+                {" "}
+                {item.ats_score}%
+              </p>
+            </div>
+          ))}
         </div>
 
         <div>
